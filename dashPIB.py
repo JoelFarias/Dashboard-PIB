@@ -189,9 +189,13 @@ def carregar_dados_db(query, params=None):
 
 @st.cache_data(max_entries=1, persist="disk")
 def obter_anos_disponiveis():
-    query = "SELECT DISTINCT ano_pib FROM pib_municipios ORDER BY ano_pib"
-    df = carregar_dados_db(query)
-    return df['ano_pib'].tolist()
+    try:
+        query = "SELECT DISTINCT ano_pib FROM pib_municipios ORDER BY ano_pib"
+        df = carregar_dados_db(query)
+        anos = df['ano_pib'].tolist()
+        return [int(ano) for ano in anos]
+    except Exception as e:
+        st.error(f"Erro ao obter anos: {e}")
 
 @st.cache_data(max_entries=1, persist="disk")
 def obter_ufs_disponiveis():
@@ -616,9 +620,15 @@ def criar_tabela_dados(df_filtrado, mostrar_tabela):
 def main():
     st.markdown("<h1 class='main-header'>📊 Dashboard do PIB dos Municípios Brasileiros</h1>", unsafe_allow_html=True)
 
-    with st.spinner("Carregando dados iniciais..."):
-        anos_disponiveis = obter_anos_disponiveis()
-        ufs_df = obter_ufs_disponiveis()
+    try:
+        with st.spinner("Carregando dados iniciais..."):
+            anos_disponiveis = obter_anos_disponiveis()
+            if not anos_disponiveis:
+                st.error("Não foi possível obter os anos disponíveis do banco de dados.")
+                st.stop()
+                
+            anos_disponiveis = [int(ano) for ano in anos_disponiveis]
+            ufs_df = obter_ufs_disponiveis()
 
     st.sidebar.markdown("<h2 style='text-align: center; color: #1E3A8A;'>Filtros</h2><hr>", unsafe_allow_html=True)
     
