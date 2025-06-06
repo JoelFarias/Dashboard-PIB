@@ -193,7 +193,6 @@ class DashboardPIB:
             help="Selecione o intervalo de anos para a análise."
         )
         
-        # Lógica do filtro de UFs com a opção "TODAS"
         ufs_disponiveis = ufs_df['sigla_uf'].tolist()
         opcoes_filtro_uf = ["TODAS"] + ufs_disponiveis
 
@@ -271,7 +270,7 @@ class DashboardPIB:
 
     def exibir_graficos(self, df):
         st.markdown("<h2 class='sub-header'>Visualizações Interativas</h2>", unsafe_allow_html=True)
-        tab_titles = ["Evolução Temporal 📈", "Ranking de Municípios 🏆", "Composição Setorial 📊", "Análise Geográfica 🗺️"]
+        tab_titles = ["Evolução Temporal �", "Ranking de Municípios 🏆", "Composição Setorial 📊", "Análise Geográfica 🗺️"]
         tab1, tab2, tab3, tab4 = st.tabs(tab_titles)
 
         df['ano_pib'] = pd.to_numeric(df['ano_pib'])
@@ -346,7 +345,8 @@ class DashboardPIB:
             hole=0.4
         )
         fig_pizza.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig, use_container_width=True)
+        # CORREÇÃO: Usando a variável correta 'fig_pizza'
+        st.plotly_chart(fig_pizza, use_container_width=True)
 
     def renderizar_analise_geografica(self, df_ano_final):
         df_geo = df_ano_final.dropna(subset=['latitude', 'longitude'])
