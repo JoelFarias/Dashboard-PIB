@@ -150,6 +150,7 @@ class DashboardPIB:
         if not municipios_codigos or not anos:
             return pd.DataFrame()
         
+        # CORREÇÃO: Adicionado CAST para garantir que ano_pib seja tratado como número
         query = """
         SELECT 
             p.ano_pib, p.codigo_municipio_dv, p.vl_pib, p.vl_pib_per_capta,
@@ -159,7 +160,7 @@ class DashboardPIB:
         FROM pib_municipios p
         JOIN municipio m ON p.codigo_municipio_dv = m.codigo_municipio_dv
         JOIN unidade_federacao u ON m.cd_uf = u.cd_uf
-        WHERE p.ano_pib BETWEEN :ano_inicial AND :ano_final
+        WHERE CAST(p.ano_pib AS INTEGER) BETWEEN :ano_inicial AND :ano_final
         AND p.codigo_municipio_dv IN :municipios_codigos
         """
         params = {
@@ -231,6 +232,8 @@ class DashboardPIB:
             st.info("Não há dados para os filtros selecionados.")
             return
 
+        # Garante que a coluna ano_pib seja numérica para a comparação
+        df['ano_pib'] = pd.to_numeric(df['ano_pib'])
         ano_inicial, ano_final = st.session_state.anos_selecionados
         df_ano_final = df[df['ano_pib'] == ano_final]
         df_ano_inicial = df[df['ano_pib'] == ano_inicial]
@@ -264,6 +267,8 @@ class DashboardPIB:
         tab_titles = ["Evolução Temporal 📈", "Ranking de Municípios �", "Composição Setorial 📊", "Análise Geográfica 🗺️"]
         tab1, tab2, tab3, tab4 = st.tabs(tab_titles)
 
+        # Garante que a coluna ano_pib seja numérica para a comparação
+        df['ano_pib'] = pd.to_numeric(df['ano_pib'])
         ano_final = st.session_state.anos_selecionados[1]
         df_ano_final = df[df['ano_pib'] == ano_final].copy()
         
