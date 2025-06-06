@@ -353,20 +353,19 @@ class DashboardPIB:
         tipo_vis = st.session_state.tipo_visualizacao
         valor_col = 'vl_pib' if tipo_vis == "PIB Total" else 'vl_pib_per_capta'
         
-        # Mapa
         df_geo = df.dropna(subset=['latitude', 'longitude'])
         if not df_geo.empty:
             fig_map = px.scatter_mapbox(df_geo, lat='latitude', lon='longitude', color=valor_col, size=valor_col,
-                hover_name='nome_municipio', size_max=40, zoom=3.5, height=500, title=f'Distribuição Geográfica do {tipo_vis}',
+                hover_name='nome_municipio', size_max=40, zoom=3.5, height=600, title=f'Distribuição Geográfica do {tipo_vis}',
                 color_continuous_scale=px.colors.cyclical.IceFire)
-            fig_map.update_layout(mapbox_style="open-street-map", margin={"r":0, "t":40, "l":0, "b":0})
+            
+            # Remove a legenda de cor (colorbar)
+            fig_map.update_layout(
+                mapbox_style="open-street-map",
+                margin={"r":0, "t":40, "l":0, "b":0},
+                coloraxis_showscale=False 
+            )
             st.plotly_chart(fig_map, use_container_width=True)
-        
-        # Treemap
-        df['regiao_nome'] = df['cd_regiao'].astype(str) # Mapear para nomes de região se disponível
-        fig_tree = px.treemap(df, path=[px.Constant("Brasil"), 'regiao_nome', 'sigla_uf', 'nome_municipio'], values='vl_pib',
-                              title='Distribuição Hierárquica do PIB')
-        st.plotly_chart(fig_tree, use_container_width=True)
         
     def exibir_tabela_dados(self, df):
         st.markdown("### Dados Detalhados")
@@ -387,7 +386,7 @@ class DashboardPIB:
 
         if not st.session_state.codigos_municipios_selecionados:
             st.warning("Nenhum município selecionado. Por favor, ajuste os filtros da barra lateral.")
-            st.stop()
+            return # Usa return para parar a execução de forma limpa
             
         with st.spinner("Carregando e processando dados..."):
             df_filtrado = self.obter_dados_pib_filtrados(
@@ -395,8 +394,7 @@ class DashboardPIB:
                 st.session_state.codigos_municipios_selecionados
             )
         
-        # Exibe resumo dos filtros
-        uf_display = "TODAS" if len(st.session_state.ufs_selecionadas) == len(st.session_state.ufs_df) else ', '.join(st.session_state.ufs_selecionadas)
+        uf_display = "TODAS" if len(st.session_state.ufs_selecionadas) >= len(st.session_state.ufs_df) else ', '.join(st.session_state.ufs_selecionadas)
         mun_display = "TODOS" if not st.session_state.municipios_selecionados_nomes else f"{len(st.session_state.municipios_selecionados_nomes)} selecionado(s)"
         st.markdown(f"""
         <div class='filter-summary'>
@@ -408,10 +406,9 @@ class DashboardPIB:
 
         if df_filtrado.empty:
             st.error("Nenhum dado encontrado para a combinação de filtros. Tente uma seleção diferente.")
-            st.stop()
-
-        self.exibir_kpis(df_filtrado)
-        self.exibir_graficos(df_filtrado)
+        else:
+            self.exibir_kpis(df_filtrado)
+            self.exibir_graficos(df_filtrado)
             
         st.markdown(f"<div class='footer'>Dashboard PIB Municípios | {datetime.now().strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
 
