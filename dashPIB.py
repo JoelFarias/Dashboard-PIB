@@ -150,7 +150,6 @@ class DashboardPIB:
         if not municipios_codigos or not anos:
             return pd.DataFrame()
         
-        # CORREÇÃO: Adicionado CAST para garantir que ano_pib seja tratado como número
         query = """
         SELECT 
             p.ano_pib, p.codigo_municipio_dv, p.vl_pib, p.vl_pib_per_capta,
@@ -193,13 +192,22 @@ class DashboardPIB:
             value=(max(anos) - 5, max(anos)),
             help="Selecione o intervalo de anos para a análise."
         )
+        
+        # Lógica do filtro de UFs com a opção "TODAS"
+        ufs_disponiveis = ufs_df['sigla_uf'].tolist()
+        opcoes_filtro_uf = ["TODAS"] + ufs_disponiveis
 
-        st.session_state.ufs_selecionadas = st.sidebar.multiselect(
+        selecao_filtro_uf = st.sidebar.multiselect(
             "Estado(s) (UF)",
-            options=ufs_df['sigla_uf'],
-            default=['SP', 'RJ', 'MG'],
-            help="Selecione um ou mais estados."
+            options=opcoes_filtro_uf,
+            default=["TODAS"],
+            help="Selecione 'TODAS' para analisar o Brasil inteiro."
         )
+
+        if "TODAS" in selecao_filtro_uf or not selecao_filtro_uf:
+            st.session_state.ufs_selecionadas = ufs_disponiveis
+        else:
+            st.session_state.ufs_selecionadas = selecao_filtro_uf
         
         municipios_df = self.obter_municipios_por_ufs(st.session_state.ufs_selecionadas)
         municipios_disponiveis = sorted(municipios_df['nome_municipio'].unique())
@@ -207,7 +215,7 @@ class DashboardPIB:
         st.session_state.municipios_selecionados_nomes = st.sidebar.multiselect(
             "Município(s)",
             options=municipios_disponiveis,
-            default=municipios_disponiveis[:5] if len(municipios_disponiveis) > 0 else [],
+            default=[],
             help="Selecione os municípios. Deixe em branco para analisar todos do(s) estado(s) selecionado(s)."
         )
 
@@ -232,7 +240,6 @@ class DashboardPIB:
             st.info("Não há dados para os filtros selecionados.")
             return
 
-        # Garante que a coluna ano_pib seja numérica para a comparação
         df['ano_pib'] = pd.to_numeric(df['ano_pib'])
         ano_inicial, ano_final = st.session_state.anos_selecionados
         df_ano_final = df[df['ano_pib'] == ano_final]
@@ -264,10 +271,9 @@ class DashboardPIB:
 
     def exibir_graficos(self, df):
         st.markdown("<h2 class='sub-header'>Visualizações Interativas</h2>", unsafe_allow_html=True)
-        tab_titles = ["Evolução Temporal 📈", "Ranking de Municípios �", "Composição Setorial 📊", "Análise Geográfica 🗺️"]
+        tab_titles = ["Evolução Temporal 📈", "Ranking de Municípios 🏆", "Composição Setorial 📊", "Análise Geográfica 🗺️"]
         tab1, tab2, tab3, tab4 = st.tabs(tab_titles)
 
-        # Garante que a coluna ano_pib seja numérica para a comparação
         df['ano_pib'] = pd.to_numeric(df['ano_pib'])
         ano_final = st.session_state.anos_selecionados[1]
         df_ano_final = df[df['ano_pib'] == ano_final].copy()
@@ -340,7 +346,7 @@ class DashboardPIB:
             hole=0.4
         )
         fig_pizza.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig_pizza, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
     def renderizar_analise_geografica(self, df_ano_final):
         df_geo = df_ano_final.dropna(subset=['latitude', 'longitude'])
@@ -376,8 +382,9 @@ class DashboardPIB:
             st.warning("Por favor, selecione ao menos uma UF para iniciar a análise.")
             st.stop()
             
-        if not st.session_state.codigos_municipios_selecionados:
-            st.warning("Nenhum município encontrado para as UFs selecionadas. A análise será feita para todos os municípios das UFs.")
+        if not st.session_state.codigos_municipios_selecionados and st.session_state.ufs_selecionadas:
+             st.info(f"Analisando todos os municípios de {', '.join(st.session_state.ufs_selecionadas)}.")
+
 
         with st.spinner(f"Carregando dados para os filtros selecionados..."):
             df_filtrado = self.obter_dados_pib_filtrados(
